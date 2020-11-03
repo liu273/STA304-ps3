@@ -1,0 +1,405 @@
+---
+title: "PS32020 Election Predict"
+author: "zilin wang1003932916,Yunhan Chen 1004710583,Xiaomeng Liu 1004900048,Guanhao Cao 1002907312"
+date: "2020/11/02"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE,echo=FALSE,warning=FALSE,message=FALSE}
+#setwd("/Users/Evangeline/304_ps3")
+library(tidyverse)
+
+# Loading in the cleaned survey Data
+survey_data <- read_csv("survey_data.csv")
+
+# Loading in the cleaned census Data
+census_data <- read_csv("census_data.csv")
+
+```
+
+
+```{r,warning=FALSE,echo=FALSE,message=FALSE}
+
+#data cleaning
+
+# remove NAs 
+
+census_data_noNA<-na.omit(census_data)
+survey_data_noNA<-na.omit(survey_data)
+
+
+# match age in census data with age in survey data
+
+attach(survey_data_noNA)
+
+survey_data_final<-survey_data_noNA %>% 
+                      mutate(agegroup = case_when(age <=20 ~ '20 or less',
+                                             age >20  & age <= 35 ~ '21 to 35',
+                                             age >35  & age <= 50 ~ '35 to 50',
+                                             age >50  & age <= 65 ~ '50 to 65',
+                                             age >65  & age <= 80 ~ '65 to 80',
+                                             age >80 ~ 'above 80')) 
+detach(survey_data_noNA)
+
+attach(census_data_noNA)
+
+census_data_noNA<-census_data_noNA%>%
+  filter(AGE>=18) # only adult can vote
+
+census_data_final<-census_data_noNA %>% 
+  mutate(agegroup = case_when(AGE <=20 ~ '20 or less',
+                              AGE >20  & AGE <=  35 ~ '21 to 35',
+                              AGE >35  & AGE <= 50 ~ '35 to 50',
+                              AGE >50  & AGE <= 65 ~ '50 to 65',
+                              AGE >65  & AGE <= 80 ~ '65 to 80',
+                              AGE >80 ~ 'above 80' 
+  )) 
+detach(census_data_noNA)
+
+
+# match states in survey data and states in census data
+
+attach(census_data_final)
+
+census_data_final<-census_data_final %>% 
+  mutate(state = case_when(STATEFIP==1~"AL",
+                           STATEFIP==2~"AK",
+                           STATEFIP==4~"AZ",
+                           STATEFIP==5~"AR",
+                           STATEFIP==6~"CA",
+                           STATEFIP==8~"CO",
+                           STATEFIP==9~"CT",
+                           STATEFIP==10~"DE",
+                           STATEFIP==12~"FL",
+                           STATEFIP==13~"GA",
+                           STATEFIP==15~"HI",
+                           STATEFIP==16~"ID",
+                           STATEFIP==17~"IL",
+                           STATEFIP==18~"IN",
+                           STATEFIP==19~"IA",
+                           STATEFIP==20~"KS",
+                           STATEFIP==21~"KY",
+                           STATEFIP==22~"LA",
+                           STATEFIP==23~"ME",
+                           STATEFIP==24~"MD",
+                           STATEFIP==25~"MA",
+                           STATEFIP==26~"MI",
+                           STATEFIP==27~"MN",
+                           STATEFIP==28~"MS",
+                           STATEFIP==29~"MO",
+                           STATEFIP==30~"MT",
+                           STATEFIP==31~"NE",
+                           STATEFIP==32~"NV",
+                           STATEFIP==33~"NH",
+                           STATEFIP==34~"NJ",
+                           STATEFIP==35~"NM",
+                           STATEFIP==36~"NY",
+                           STATEFIP==37~"NC",
+                           STATEFIP==38~"ND",
+                           STATEFIP==39~"OH",
+                           STATEFIP==40~"OK",
+                           STATEFIP==41~"OR",
+                           STATEFIP==42~"PA",
+                           STATEFIP==44~"RI",
+                           STATEFIP==45~"SC",
+                           STATEFIP==46~"SD",
+                           STATEFIP==47~"TN",
+                           STATEFIP==48~"TX",
+                           STATEFIP==49~"UT",
+                           STATEFIP==50~"VT",
+                           STATEFIP==51~"VA",
+                           STATEFIP==53~"WA",
+                          STATEFIP==54~"WV",
+                           STATEFIP==55~"WI",
+                           STATEFIP==56~"WY",
+                           STATEFIP==11~"DC")) 
+
+detach(census_data_final)
+
+```
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+# match race in survey data and race in census data
+
+
+small_asian_countries<-c("Asian (Asian Indian)","Asian (Vietnamese)","Asian (Other)","Asian (Korean)","Asian (Filipino)")
+pacific_island<-c(  "Pacific Islander (Native Hawaiian)","Pacific Islander (Other)",
+              "Pacific Islander (Samoan)","Pacific Islander (Guamanian)")
+
+attach(survey_data_final)           
+
+survey_data_final<-survey_data_final %>% 
+  mutate(race = case_when(race_ethnicity =="Asian (Japanese)" ~ 'Japanese',
+                          race_ethnicity =="Asian (Chinese)" ~ 'Chinese',
+                          (race_ethnicity %in% small_asian_countries|race_ethnicity %in% pacific_island) ~"other asian or pacific islander",
+                          race_ethnicity =="White" ~ 'White',
+                          race_ethnicity =="Black, or African American" ~ 'Black, or African American',
+                          race_ethnicity =="Some other race" ~ 'Other race',
+                          race_ethnicity=="American Indian or Alaska Native"~"American Indian or Alaska Native",
+                          race_ethnicity=="Other race "~"Other race"
+  )) 
+detach(survey_data_final)
+
+attach(census_data_final)
+
+census_data_final<-census_data_final %>% 
+  mutate(race = case_when(RACE==1~"White",
+RACE==4~"Chinese",
+                           RACE==2~"Black, or African American",
+                           RACE==8~"Other race",
+                           RACE==7~"Other race",
+                           RACE==5~"Japanese",
+                           RACE==3~"American Indian or Alaska Native",
+                           RACE==9~"Other race",
+                           RACE==6~"other asian or pacific islander"
+  )) 
+
+
+```
+```{r,message=FALSE,warning=FALSE,echo=FALSE}
+#match income in survey data with income in census data
+census_data_final<-census_data_final %>% 
+  mutate(household_income = case_when(INCTOT<=14999 ~ "Less than $14,999",
+                                      INCTOT>=15000 &INCTOT<=19999~"$15,000 to $19,999",
+                                      INCTOT>=20000 & INCTOT<=24999~"$20,000 to $24,999",
+                                      INCTOT>=25000 & INCTOT<=29999~"$25,000 to $29,999",
+                                      INCTOT>=30000 & INCTOT<=34999~"$30,000 to $34,999",
+                                      INCTOT>=35000 & INCTOT<=39999~"$35,000 to $39,999",
+                                      INCTOT>=40000 & INCTOT<=44999~"$40,000 to $44,999",
+                                      INCTOT>=45000 & INCTOT<=49999~"$45,000 to $49,999",
+                                      INCTOT>=50000 & INCTOT<=54999~"$50,000 to $54,999",
+                                      INCTOT>=55000 & INCTOT<=59999~"$55,000 to $59,999",
+                                      INCTOT>=60000 & INCTOT<=64999~"$60,000 to $64,999",
+                                      INCTOT>=65000 & INCTOT<=69999~"$65,000 to $69,999",
+                                      INCTOT>=70000 & INCTOT<=74999~"$70,000 to $74,999",
+                                      INCTOT>=75000 & INCTOT<=79999~"$75,000 to $79,999",
+                                      INCTOT>=80000 & INCTOT<=84999~"$80,000 to $84,999",
+                                      INCTOT>=85000 & INCTOT<=89999~"$85,000 to $89,999",
+                                      INCTOT>=90000 & INCTOT<=94999~"$90,000 to $94,999",
+                                      INCTOT>=95000 & INCTOT<=99999~"$95,000 to $99,999",
+                                      INCTOT>=100000 & INCTOT<=124999~"$100,000 to $124,999",
+                                      INCTOT>=125000 & INCTOT<=149999~"$125,000 to $149,999",
+                                      INCTOT>=150000 & INCTOT<=174999~"$150,000 to $174,999",
+                                      INCTOT>=175000 & INCTOT<=199999~"$175,000 to $199,999",
+                                      INCTOT>=200000 & INCTOT<=249999~"$200,000 to $249,999",
+                                      INCTOT>=250000~"$250,000 and above"
+                                      )) 
+
+```
+
+
+```{r,message=FALSE,warning=FALSE,echo=FALSE}
+# match gender in survey data with gender in census data
+
+census_data_final<-census_data_final%>%
+  mutate(gender=case_when(SEX==1~"Male",
+                          SEX==2~"Female"))
+
+
+```
+
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+
+columns_survey<-c("agegroup","gender","state","household_income" ,"race","vote_2020")
+survey_data_final[columns_survey] <- lapply(survey_data_final[columns_survey], as.factor) 
+columns_census<-c("agegroup","gender","state","household_income" ,"race")
+census_data_final[columns_census] <- lapply(census_data_final[columns_census], as.factor) 
+
+survey_data_final$vote_2020 <- relevel(survey_data_final$vote_2020, ref = "Donald Trump")    
+
+```
+
+```{r}
+#install.packages("lme4")
+library(lme4)
+#install.packages("brms")
+library(brms)
+#install.packages("caret")
+#library(caret)
+#install.packages("ROCR")
+library(ROCR)
+
+```
+###Intro 
+
+According to the American Electoral College system, the President of the United States is elected by the Electoral College. With the number of electoral college members in each state, the number of electors and the number of federal government members in each state, plus the three electoral votes of Washington, D.C., total 538 votes nationwide. When a candidate wins 270 votes or more, the victory can be sealed. 
+
+Candidates who get a larger proportion of votes in a state take all electoral votes in this state(i.e winner take all).Therefore, the results of the general election can usually be calculated based on the results of the state elections on the polling day of the general election. This report is based on survey data provided by  IPUMS International,      and census data provided by   Democracy Fund Voter Study Group    ets a general predict about the 2020 election result.
+We chose this to conduct our estimation for the National poll result between Joe Biden and Donald Trump.
+
+
+###Model
+Model 
+
+This model includes gender, age, income, and race, four variables in each state environment.
+
+First, we consider the gender variable. Trump has shown a lot of disrespect towards women since the 2016 election against Hillary Clinton, and even has sexual harassment scandals. Therefore, we believe that gender may affect election intentions. 
+Another variable is age. First is incurring the COVID-19, older people are more worried about the new crown than younger Americans. They wouldn’t put a lot of trust in Trump. While the younger generation of voters is more diversified. Among them, the proportion of white people is much smaller than that of the older generation. They are disgusted with the continuous cultural wars launched by the Republican hawks. They are more inclined to think that African Americans are facing discrimination and hope to make major reforms in police, criminal, and judicial policies. These tendencies are closer to the Democratic Party’s ideals. The third would be the income factor. Income in a degree related to the tax inquiry. While Joe Biden says he will push for the largest tax increase in American if he becomes the president. It would be a huge blow and shadow for high-income people. Candidates who promise tax increases will lose votes from high income people.
+ Last but not least, race is also being included. Racial discrimination has recently been controversial in the United States. The Republican Party, which once had African-American President Barack Obama, is more likely to win the votes of African-American voters. Trump has always been criticized for its bias towards white supremacy. 
+
+The statistical model can be written as:
+𝑌𝑖𝑗=α+aj+𝛽1𝑋1+...+𝛽n𝑋n+e𝑖𝑗
+where a𝑗~N(0,σa²）
+
+In this formula, 𝑌𝑖𝑗 represents the probability of the ith elector in the jth state to vote for Joe Biden, α is a constant represents the baseline of each state, aj represents the uncertainty associated with the intercept of each state, 𝛽n represents the estimates corresponding to a certain variable value (e.g. gendermale) and 𝑋n represents the associated dummy variable of 𝛽n as 𝑋i equals 1 if the 𝑖𝑗th elector satisfies the 𝛽n condition and takes 0 otherwise. n is an integer from 1 to 35 as there are 35 different variable values for race, gender, household income and age group. e𝑖𝑗 represents the error term of this model. The range of 𝑌𝑖𝑗 is from 0 to 1 as it represents a probability while the domain of 𝑋i is strictly 1 or 0 as it is a dummy variable.
+
+We conduct the multilevel logistic regression model by R studio to build a model for predicting the  2020 election result . Multilevel logistic uses individual survey responses from national surveys and conducts multilevel logic regression to generate probability of each elector to vote for Biden(reference is Trump).
+There are some states that are determined supporters of the Democratic Party and have only voted for the Democratic Party for so many years while some other states are the Republican’s determined supporters and would only vote for Republican Party. If the state of an elector is a determined supporter of the Democratic Party, his probability of voting for Biden is much higher than voting for Trump.
+ It suggests that MR can produce accurate estimates using fairly simple. 
+We separate electors based on states as we make the assumption that the intercepts are different for each state. 
+
+The following random intercept is the uncertainty of intercept, which is the α in the formula. The model assumes that the slope is fixed. At the same time, we need four variables to get the results. In our formula derived, the𝑌𝑖𝑗 is the probability of voting biden(reference is trump) and 𝑋𝑖𝑗 is the dummy variable corresponding to each variable 𝛽. 
+
+We try two sets of variables to predict the result of the 2020 election. The first set of variables are composed by gender,income,race. On another hand, in the second set of variables, there is an additional variable called age group.
+
+In order to evaluate the model,  fit statistics of different models will be checked. After constructing the two  models, we build an Anova table to compare two models. 
+After we use the ANOVA to compare these two models, we notice model 2 has less AIC and BIC, which indicates model 2 has better performance in terms of balance between complexity and accuracy. Also, the p-value is large, which indicates the difference between the means is statistically significant. We have good reason to have 4 variables in this case  instead of having only 3 variables. Then by adopting a confusion matrix, we can try to describe the accuracy of our model.
+
+Importantly, In census data, each observation represents  more than one US citizen, denoted as (persen weight PRWT). I correct the difference between the number of observations  in census data and the real population in the USA. 
+
+
+
+```{r,warning=FALSE,message=FALSE}
+
+#our model
+
+model_1 <- glmer(vote_2020~(1|state)+race+gender+household_income,
+                     data = survey_data_final, 
+                     family=binomial)
+
+summary(model_1)
+
+```
+```{r,warning=FALSE,message=FALSE}
+model_2 <- glmer(vote_2020~(1|state)+race+gender++household_income+agegroup,
+                     data = survey_data_final, 
+                     family=binomial)
+
+summary(model_2)
+```
+```{r}
+anova(model_1,model_2)
+```
+
+Table 1:
+
+-| estimate | SE | P_value |
+----|:------------:|:-----------:|:-----------:|
+Blackor_AfricanAmerican|2.338|0.346|1.36e-11|
+raceChinese|1.603|0.494|0.001|
+raceJapanes|1.429|0.681|0.036|
+raceOther|0.893|0.343|0.009|
+genderMale|-0.408| 0.067|1.21e-09|
+agegroup35~50|-0.830|0.187|8.75e-06|
+agegroup50~65|-0.867|0.188|3.79e-06|
+
+
+
+There are two models we used to descibed our data are logistic regression,the model_1 tries to explained the relationship between the variable of the president the people want to select in 2020 USA selection and the other independent variables of states, race, gender and income. And the model_2 we want to understand whether the probability of these independent variables(states, race, gender ,household_income and agegroup) can change the people's voting intention in 2020 USA selection. We prefer to use model_2,since we compared the two model's AIC and BIC values, the logic_model_2 has less AIC and BIC values,which means model_2 can perform better on prediction.
+
+From the output of model_2
+
+
+
+```{r}
+# confusion matrix
+
+prob <- predict(model_2, survey_data_final, type="response")
+pred <- factor(prob > 0.5, levels=c(TRUE,FALSE),labels=c("biden", "trump"))
+perf <- table(survey_data_final$vote_2020, pred,dnn=c("ACtual","Predicted"))
+perf
+
+```
+
+```{r}
+
+#evaluate the model
+plot(predict(model_2, type="response"),
+residuals(model_2, type= "deviance"))
+```
+
+
+```{r,warning=FALSE,echo=FALSE,message=FALSE}
+#Apply model on census data
+
+vote2020<-predict(model_2,census_data_final[,c("gender","state","household_income","race")],type="response")
+vote2020<-ifelse(vote2020>0.5,"Joe Biden","Donald Trump")
+census_data_result<-cbind(census_data_final,vote2020)
+
+#according to person weight, calculate the # of votes
+census_data_result$trump_votes<-ifelse(census_data_result$vote2020=="Donald Trump",census_data_result$PERWT,0)
+census_data_result$biden_votes<-ifelse(census_data_result$vote2020=="Joe Biden",census_data_result$PERWT,0)
+
+#Calculate vote in every states
+predicted_votes_every_states<-census_data_result %>% group_by(state) %>% summarise(trump=sum(trump_votes),biden=sum(biden_votes))
+attach(predicted_votes_every_states)
+predicted_votes_every_states$winner<-ifelse(trump>biden,"trump","biden")
+detach(predicted_votes_every_states)
+```
+###Results
+In this anova table, the AIC of model 2 is smaller than that of model 1(5546.9 v.s. 5573.2). 
+This is a confusion matrix that compares the predicted and actual result of the elector's voting. The result suggests that 1455 of Donald Trump’s votes and 1333 Joe Biden’s votes are predicted successfully by model 2. However, 627 votes that are predicted to be Joe Biden’s are actually Donald Trump’s while 952 electors that model 2 predicts to vote for Donald Trump actually vote for Joe Biden.
+The random effects table shows the variance of 51 states is 0.085 and standard error is 0.292.
+This summary shows the regression results of model 2 and calculates the estimates, standard error, z value and p value of four independent variables, namely, race, gender, household income and age group. It shows the baseline intercept of this model is 0.349 with a standard error of 0.372. Different variables would contribute to the likelihood more or less and the statistically meaningful variables are collected to make a table below. 
+From this table, under the condition that American Indian or Alaska Native to be the baseline, when the race variable is Black or African American, the estimate is 2.338 and the p value is 1.36*e^-11. When the race variable is Chinese, the estimate is 1.603 and the p value is  0.001. When the race variable is Japan, the estimate is 1.429 and the p value is 0.036. When the race variable is Other race, the estimate is 0.893 and the p value is 0.009. 
+Under the precondition that Female to be the baseline, when the gender variable is male, the estimate is -0.408 and the p value is 1.21*e^-9. 
+Under the condition that age group(less than 20) to be the baseline, when the age group variable is 35 to 50, the estimate is -0.830 and the p value is 8.75*e^-6. When the age group variable is 50 to 65, the estimate is -0.867 and the p value is 3.79*e^-6.
+This is the table that shows the winner of the election and the votes of each candidate predicted by our model. The model predicts that Joe Biden will win the election with 294 votes while Donald Trump will lose with 244 votes.
+
+```{r,echo=FALSE,warning=FALSE}
+predicted_votes_every_states<-predicted_votes_every_states%>%
+  mutate(electoral_votes = case_when(state=="CA"~55,state=="TX"~38,state=="FL"~29,state=="NY"~29,state=="IL"~20,state=="PA"~20,state=="OH"~18,
+                                     state=="GA"~16,state=="MI"~16,state=="NC"~15,state=="NJ"~14,state=="VA"~13,state=="WA"~12,state=="AZ"~11,
+                                     state=="IN"~11,state=="MA"~11,state=="TN"~11,state=="MD"~10,state=="MN"~10,state=="MO"~10,state=="WI"~10,
+                                     state=="AL"~9,state=="CO"~9,state=="SC"~9,state=="KY"~8,state=="LA"~8,state=="CT"~7,state=="OK"~7,
+                                     state=="OR"~7,state=="AR"~6,state=="IA"~6,state=="KS"~6,state=="MS"~6,state=="NV"~6,state=="UT"~6,
+                                     state=="NE"~5,state=="NM"~5,state=="WV"~5,state=="HI"~4,state=="ID"~4,state=="ME"~4,state=="NH"~4,
+                                     state=="RI"~4,state=="AK"~3,state=="DE"~3,state=="MT"~3,state=="ND"~3,state=="SD"~3,state=="VT"~3,
+                                     state=="WY"~3,state=="DC"~3))
+result<-predicted_votes_every_states%>%group_by(winner)%>%summarise(votes=sum(electoral_votes))
+
+result
+
+```
+
+Discussions
+
+Summary:
+
+In this project, we use the multilevel logistic regression model and the post stratification technique to predict the possibility of voting for every elector. 
+Firstly, we propose a hypothesis that the probability of one elector’s voting is related to race, gender, household income and age group. Then, we access raw data sets from websites and perform a data cleaning process on variables we are interested in. During this process, we remove responses with unknown data(NAs) in the data set, remove responses with age below 18(as only adults could vote) and match the variables we investigated in the census data to those in the survey data. 
+After the data cleaning, we build a multilevel logistic regression model to determine how the variables we are interested in could affect the probability of people’ intention in 2020 election.. We conduct a multilevel logic regression model by considering every state to be a cell.
+We choose 3 and 4 variables to build two multilevel logistic models and the anova table shows model 2 is more suitable as AIC of model 2 is smaller than that of model 2. After finalising the model, we construct a confusion matrix and the 63.8% correctness of model 2 supports our model selection. The most important step is that we make a table for statistically meaningful variables(all variables with p value bigger than 0.05 are rejected). These variables in the table all have quite low p values, indicating that these variables are closely related to the voting decision. The estimate of these variables also testify some possible reasoning we make when we select variables. For instance, the estimate of raceBlack is extremely large(2.338) and this testifies that African American have a strong tendency to support Biden not only because his party once nominated an African American president but also because Donald Trump has the belief of White Supremacy. Also, the high estimate of raceChina(1.603) might be contributed by the fact that Donald Trump has a bad relationship with China.The negative estimate of gendermale(-0.408) represents male electors have a higher tendency to vote for Donald Trump and this testifies the hypothesis that Donald Trump’s disrespect towards women indeed decreases his supporting rate of women. However, the hypothesis that high income people tend to vote Donald Trump also got testified by the estimate of household income range 200000 to 249999(-0.558) and this might be contributed by the heavy taxation policy on high income people implemented by Joe Biden. The estimate of the age group from 35 to 50 is -0.830 and that of the age group from 50 to 65 is -0.867 testifies that middle age people have a stronger tendency to be Donald Trump’s supporters compared to children or elderly. After the interpretation of the regression result, we apply the model on the census data to calculate the number of votes with respect to person weight. Last, we calculate the number of votes in every state and sum them for each candidate to get the election result.
+
+Conclusion:
+In this project, we construct a multilevel logistic model (divide the total population of electors into different cells according to states). Based on the model, Joe Biden will win the election with 294 votes and Donald Trump will lose with 244 votes. The modelling process also finds out the variables that are closely related to voting decisions and the estimates for these variables in the regression result evidently testifies the hypothesis proposed in the Model section. This prediction also has broader impacts in real life. If Joe Biden gets elected as we predict, Biden’s administration would control the pandemic of Coronavirus much more effectively than Donald Trump (Maxmen, Amy, et al). Moreover, Joe Biden’s election would address the climate change problem as Donald Trump holds the perspective that the global warming is a hoax and pulled USA out of 2015 Paris climate treaty (Maxmen, Amy, et al). It is also well known that Donald Trump holds an extreme attitude towards international relationships with specific countries (e.g. China, Mexico) and therefore the election of Joe Biden would relieve the pressure of diplomacy and this would significantly boost the collaboration of scientific research (Maxmen, Amy, et al).
+
+Weakness & Next Steps:
+Although the multilevel logistic model is a common model people would adopt in a nationwide census, the model itself the post stratification process still has some weaknesses. The biggest weakness of our model is that we only consider four variables that would influence the probability of one elector’s voting. This would lead to loss of success rate of prediction. As shown by the confusion matrix, the rate of predicting right votes is only slightly higher than 60%, which is not enough for such an important prediction. This weakness could be improved by taking more variables(e.g. religion, education level, marriage...) into account.
+
+
+
+
+
+References:
+
+      RStudio Team (2020). RStudio: Integrated Development for R. RStudio, PBC, Boston,               MA URL http://www.rstudio.com/.
+     Plonsky, Luke, and Frederick L. Oswald. “MULTIPLE REGRESSION AS A FLEXIBLE ALTERNATIVE TO ANOVA IN L2 RESEARCH: Studies in Second Language Acquisition.” Cambridge Core, Cambridge University Press, 17 Nov. 2016, www.cambridge.org/core/journals/studies-in-second-language-acquisition/article/multiple-regression-as-a-flexible-alternative-to-anova-in-l2-research/61C0249F51E200C712D2DDF7D489C835. 
+     Finance, Y., & Newsweek. (2020, October 30). New: Second Nationscape Data Set Release (1025960063 787439719 C. Press, Ed.). Retrieved November 03, 2020, from https://www.voterstudygroup.org/publication/nationscape-data-set
+      Ipums, USA. (2020). Census Data. Retrieved November 03, 2020, from https://usa.ipums.org/usa-action/data_requests/download
+
+     Austin, P., & Merlo, J. (2017, September 10). Intermediate and advanced topics in multilevel logistic regression analysis. Retrieved November 03, 2020, from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5575471/
+
+Maxmen, Amy, et al. “What a Joe Biden Presidency Would Mean for Five Key Science Issues.” Nature News, Nature Publishing Group, 1 Oct. 2020, www.nature.com/articles/d41586-020-02786-4. 
+
+
+
+
+
+
+
